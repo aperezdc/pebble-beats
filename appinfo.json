@@ -1,0 +1,30 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "Adri\u00e1n P\u00e9rez",
+    "longName": "Swatch @beats Internet Time",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/beatslogo24bw.png",
+                "menuIcon": true,
+                "name": "BEATS_LOGO24",
+                "type": "png"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "@beats",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "0ea96ac0-06dc-46f4-ac71-b760c9f8d4c4",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}

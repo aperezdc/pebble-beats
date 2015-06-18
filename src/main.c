@@ -2,6 +2,7 @@
 
 #define LENGTH_OF(v)  ((sizeof (v) / sizeof(v[0])))
 
+
 static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
 static TextLayer *s_time_layer     = NULL;
@@ -52,12 +53,14 @@ main_window_load (Window *window)
                      text_layer_get_layer (s_beats_layer));
 
     /* Normal HH:MM display */
-    s_time_layer = text_layer_create (GRect (0, 120, 144, 140));
+    s_time_layer = text_layer_create (GRect (0, 120, 144, 120 + 24));
     text_layer_set_background_color (s_time_layer, GColorClear);
     text_layer_set_text_color (s_time_layer,
                                COLOR_FALLBACK (GColorLightGray,
                                                GColorWhite));
     text_layer_set_text (s_time_layer, s_time_buffer);
+    text_layer_set_font (s_time_layer,
+                         fonts_get_system_font (FONT_KEY_GOTHIC_24_BOLD));
     text_layer_set_text_alignment (s_time_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_time_layer));

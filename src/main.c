@@ -1,7 +1,7 @@
 #include <pebble.h>
 
 #define LENGTH_OF(v)  ((sizeof (v) / sizeof(v[0])))
-    
+
 static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
 static TextLayer *s_time_layer     = NULL;
@@ -15,7 +15,7 @@ update_time (struct tm *localtm,
 {
     /* We'll do all calculations starting from the UTC time. */
     time_t utctime = mktime (localtm);
-    
+
     /* The normal HH:MM text is straightforward. */
     struct tm *T = localtime (&utctime);
     strftime (s_time_buffer, LENGTH_OF (s_time_buffer), "%H:%M", T);
@@ -28,7 +28,7 @@ update_time (struct tm *localtm,
      */
     utctime -= (60 * 60);   /* TZ=UTC-1 */
     T = gmtime (&utctime);
-    
+
     snprintf (s_beats_buffer, LENGTH_OF (s_beats_buffer), "@%03u",
               ((T->tm_sec) + (T->tm_min * 60) + (T->tm_hour * 3600)) * 1000 / 864);
     layer_mark_dirty (text_layer_get_layer (s_beats_layer));
@@ -39,7 +39,7 @@ static void
 main_window_load (Window *window)
 {
     window_set_background_color (s_main_window, GColorBlack);
-    
+
     /* Beats */
     s_beats_layer = text_layer_create (GRect (0, 55, 144, 50));
     text_layer_set_background_color (s_beats_layer, GColorClear);
@@ -50,7 +50,7 @@ main_window_load (Window *window)
     text_layer_set_text_alignment (s_beats_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));
-    
+
     /* Normal HH:MM display */
     s_time_layer = text_layer_create (GRect (0, 120, 144, 140));
     text_layer_set_background_color (s_time_layer, GColorClear);
@@ -79,13 +79,13 @@ int main (int argc, char *argv[])
         .unload = main_window_unload,
     });
     window_stack_push (s_main_window, true);
-    
+
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);
-    
+
     app_event_loop ();
-    
+
     window_destroy (s_main_window);
     return 0;
 }

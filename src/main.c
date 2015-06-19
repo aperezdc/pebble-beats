@@ -50,12 +50,13 @@ main_window_load (Window *window)
     window_set_background_color (s_main_window, GColorBlack);
 
     /* Beats */
-    s_beats_layer = text_layer_create (GRect (0, 55, 144, 50));
+    s_beats_layer = text_layer_create (GRect (0, 32, 144, 60));
     text_layer_set_background_color (s_beats_layer, GColorClear);
     text_layer_set_text_color (s_beats_layer, GColorWhite);
     text_layer_set_text (s_beats_layer, s_beats_buffer);
     text_layer_set_font (s_beats_layer,
-                         fonts_get_system_font (FONT_KEY_BITHAM_42_BOLD));
+        fonts_load_custom_font (
+            resource_get_handle (RESOURCE_ID_FONT_BEATS_60)));
     text_layer_set_text_alignment (s_beats_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));

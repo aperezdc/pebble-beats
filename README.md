@@ -11,3 +11,7 @@ License
 
 Source is distributed under terms of the [MIT license](http://opensource.org/licenses/mit)
 
+The custom font used for the “beats” display is Ace Futurism, by [Andrew
+“NAL” McCluskey](http://nalgames.com/about/me/) which is licensed under
+the [Creative Commons CC-BY
+3.0](http://creativecommons.org/licenses/by/3.0/) license.

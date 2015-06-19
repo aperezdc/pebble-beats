@@ -13,6 +13,12 @@
                 "menuIcon": true,
                 "name": "BEATS_LOGO24",
                 "type": "png"
+            },
+            {
+                "characterRegex": "[0-9@]",
+                "file": "fonts/ace_futurism.ttf",
+                "name": "FONT_BEATS_60",
+                "type": "font"
             }
         ]
     },

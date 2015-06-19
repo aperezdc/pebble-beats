@@ -9,7 +9,7 @@
     "resources": {
         "media": [
             {
-                "file": "images/beatslogo24bw.png",
+                "file": "images/beatslogo24.png",
                 "menuIcon": true,
                 "name": "BEATS_LOGO24",
                 "type": "png"

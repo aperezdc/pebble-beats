@@ -36,6 +36,15 @@ update_time (struct tm *localtm,
 
 
 static void
+update_bluetooth (bool connected)
+{
+    if (!connected) {
+        vibes_short_pulse ();
+    }
+}
+
+
+static void
 main_window_load (Window *window)
 {
     window_set_background_color (s_main_window, GColorBlack);
@@ -82,12 +91,15 @@ int main (int argc, char *argv[])
     });
     window_stack_push (s_main_window, true);
 
+    bluetooth_connection_service_subscribe (update_bluetooth);
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);
 
     app_event_loop ();
 
+    tick_timer_service_unsubscribe ();
+    bluetooth_connection_service_unsubscribe ();
     window_destroy (s_main_window);
     return 0;
 }

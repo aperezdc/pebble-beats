@@ -7,7 +7,7 @@ static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
 static TextLayer *s_time_layer     = NULL;
 static char       s_beats_buffer[] = "@000";
-static char       s_time_buffer[]  = "HH:MM";
+static char       s_time_buffer[]  = "HH:MM NN";
 
 
 static void
@@ -17,9 +17,8 @@ update_time (struct tm *localtm,
     /* We'll do all calculations starting from the UTC time. */
     time_t utctime = mktime (localtm);
 
-    /* The normal HH:MM text is straightforward. */
-    struct tm *T = localtime (&utctime);
-    strftime (s_time_buffer, LENGTH_OF (s_time_buffer), "%H:%M", T);
+    /* The normal HH:MM NN text is straightforward. */
+    clock_copy_time_string (s_time_buffer, LENGTH_OF (s_time_buffer));
     layer_mark_dirty (text_layer_get_layer (s_time_layer));
 
     /*
@@ -28,7 +27,7 @@ update_time (struct tm *localtm,
      * set TZ in the environment we have to do our own timezone adjustment :-/
      */
     utctime -= (60 * 60);   /* TZ=UTC-1 */
-    T = gmtime (&utctime);
+    struct tm *T = gmtime (&utctime);
 
     snprintf (s_beats_buffer, LENGTH_OF (s_beats_buffer), "@%03u",
               ((T->tm_sec) + (T->tm_min * 60) + (T->tm_hour * 3600)) * 1000 / 864);

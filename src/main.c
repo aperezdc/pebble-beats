@@ -62,7 +62,7 @@ main_window_load (Window *window)
                      text_layer_get_layer (s_beats_layer));
 
     /* Normal HH:MM display */
-    s_time_layer = text_layer_create (GRect (0, 120, 144, 120 + 24));
+    s_time_layer = text_layer_create (GRect (0, 120, 144, 24));
     text_layer_set_background_color (s_time_layer, GColorClear);
     text_layer_set_text_color (s_time_layer,
                                COLOR_FALLBACK (GColorLightGray,

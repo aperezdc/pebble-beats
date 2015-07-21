@@ -26,11 +26,15 @@ update_time (struct tm *localtm,
      * it is possible to manipulate artifically the timezone, because we cannot
      * set TZ in the environment we have to do our own timezone adjustment :-/
      */
-    utctime -= (60 * 60);   /* TZ=UTC-1 */
+    utctime += (60 * 60);   /* TZ=UTC+1 */
     struct tm *T = gmtime (&utctime);
 
+    /*
+     * Internet Time is calculated from UTC+1 as follows:
+     *   (UTC+1seconds + (UTC+1minutes * 60) + (UTC+1hours * 3600)) / 86.4
+     */
     snprintf (s_beats_buffer, LENGTH_OF (s_beats_buffer), "@%03u",
-              ((T->tm_sec) + (T->tm_min * 60) + (T->tm_hour * 3600)) * 1000 / 864);
+              ((T->tm_sec) + (T->tm_min * 60) + (T->tm_hour * 3600)) * 10 / 864);
     layer_mark_dirty (text_layer_get_layer (s_beats_layer));
 }
 

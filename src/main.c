@@ -2,6 +2,14 @@
 
 #define LENGTH_OF(v)  ((sizeof (v) / sizeof(v[0])))
 
+enum PersistKey {
+    PERSIST_KEY_FONT  = 0,
+};
+enum FontId {
+    FONT_ACE_FUTURISM   = 0,
+    FONT_FALSE_POSITIVE = 1,
+};
+
 
 static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
@@ -48,19 +56,29 @@ update_bluetooth (bool connected)
 }
 
 
+static GFont
+config_get_font (void)
+{
+    switch (persist_read_int (PERSIST_KEY_FONT)) {
+        case FONT_FALSE_POSITIVE:
+            return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_FALSE_POSITIVE_70));
+        case FONT_ACE_FUTURISM:
+        default:
+            return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_BEATS_60));
+    }
+}
+
 static void
 main_window_load (Window *window)
 {
     window_set_background_color (s_main_window, GColorBlack);
 
     /* Beats */
-    s_beats_layer = text_layer_create (GRect (0, 32, 144, 60));
+    s_beats_layer = text_layer_create (GRect (0, 32, 144, 70));
     text_layer_set_background_color (s_beats_layer, GColorClear);
     text_layer_set_text_color (s_beats_layer, GColorWhite);
     text_layer_set_text (s_beats_layer, s_beats_buffer);
-    text_layer_set_font (s_beats_layer,
-        fonts_load_custom_font (
-            resource_get_handle (RESOURCE_ID_FONT_BEATS_60)));
+    text_layer_set_font (s_beats_layer, config_get_font ());
     text_layer_set_text_alignment (s_beats_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));
@@ -87,6 +105,39 @@ main_window_unload (Window *window)
 }
 
 
+static void
+config_init (void)
+{
+    if (!persist_exists (PERSIST_KEY_FONT)) {
+        persist_write_int (PERSIST_KEY_FONT, FONT_ACE_FUTURISM);
+    }
+}
+
+
+static void
+config_apply (void)
+{
+    text_layer_set_font (s_beats_layer, config_get_font ());
+}
+
+
+static void
+message_received (DictionaryIterator *iter, void *context)
+{
+    for (Tuple *t = dict_read_first (iter); t; t = dict_read_next (iter)) {
+        if (t->key == PERSIST_KEY_FONT) {
+            if (!strcmp (t->value->cstring, "ace-futurism")) {
+                persist_write_int (t->key, FONT_ACE_FUTURISM);
+            } else if (!strcmp (t->value->cstring, "false-positive")) {
+                persist_write_int (t->key, FONT_FALSE_POSITIVE);
+            }
+        }
+    }
+
+    config_apply ();
+}
+
+
 int main (int argc, char *argv[])
 {
     s_main_window = window_create ();
@@ -100,6 +151,11 @@ int main (int argc, char *argv[])
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);
+
+    config_init ();
+    app_message_register_inbox_received (message_received);
+    app_message_open(app_message_inbox_size_maximum(),
+                     app_message_outbox_size_maximum());
 
     app_event_loop ();
 

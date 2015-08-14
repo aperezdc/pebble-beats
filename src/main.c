@@ -8,6 +8,7 @@ enum PersistKey {
 enum FontId {
     FONT_ACE_FUTURISM   = 0,
     FONT_FALSE_POSITIVE = 1,
+    FONT_AKRON_SANS     = 2,
 };
 
 
@@ -62,6 +63,8 @@ config_get_font (void)
     switch (persist_read_int (PERSIST_KEY_FONT)) {
         case FONT_FALSE_POSITIVE:
             return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_FALSE_POSITIVE_70));
+        case FONT_AKRON_SANS:
+            return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_AKRON_SANS_76));
         case FONT_ACE_FUTURISM:
         default:
             return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_BEATS_60));
@@ -74,7 +77,7 @@ main_window_load (Window *window)
     window_set_background_color (s_main_window, GColorBlack);
 
     /* Beats */
-    s_beats_layer = text_layer_create (GRect (0, 32, 144, 70));
+    s_beats_layer = text_layer_create (GRect (0, 32, 144, 78));
     text_layer_set_background_color (s_beats_layer, GColorClear);
     text_layer_set_text_color (s_beats_layer, GColorWhite);
     text_layer_set_text (s_beats_layer, s_beats_buffer);
@@ -130,6 +133,8 @@ message_received (DictionaryIterator *iter, void *context)
                 persist_write_int (t->key, FONT_ACE_FUTURISM);
             } else if (!strcmp (t->value->cstring, "false-positive")) {
                 persist_write_int (t->key, FONT_FALSE_POSITIVE);
+            } else if (!strcmp (t->value->cstring, "akron-sans")) {
+                persist_write_int (t->key, FONT_AKRON_SANS);
             }
         }
     }

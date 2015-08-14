@@ -26,6 +26,12 @@
 				"file": "fonts/false_positive.ttf",
 				"name": "FONT_FALSE_POSITIVE_70",
 				"type": "font"
+			},
+			{
+				"characterRegex": "[0-9@]",
+				"file": "fonts/akron_sans.ttf",
+				"name": "FONT_AKRON_SANS_76",
+				"type": "font"
 			}
         ]
     },

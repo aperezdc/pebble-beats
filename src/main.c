@@ -78,7 +78,9 @@ draw_battery_line (Layer *layer, GContext *ctx)
     graphics_context_set_fill_color (ctx, GColorBlack);
     graphics_fill_rect (ctx, bounds, 0, GCornerNone);
 
-    graphics_context_set_fill_color (ctx, COLOR_FALLBACK (GColorLightGray,
+    graphics_context_set_fill_color (ctx, COLOR_FALLBACK ((s_battery_level <= 20
+                                                            ? GColorRed
+                                                            : GColorLightGray),
                                                           GColorWhite));
     graphics_fill_rect (ctx,
                         GRect ((bounds.size.w - width) / 2, 0, width, bounds.size.h),

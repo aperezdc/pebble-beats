@@ -15,8 +15,10 @@ enum FontId {
 static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
 static TextLayer *s_time_layer     = NULL;
+static Layer     *s_battery_layer  = NULL;
 static char       s_beats_buffer[] = "@000";
 static char       s_time_buffer[]  = "HH:MM NN";
+static uint8_t    s_battery_level  = 100;
 
 
 static void
@@ -54,6 +56,33 @@ update_bluetooth (bool connected)
     if (!connected) {
         vibes_short_pulse ();
     }
+}
+
+
+static void
+update_battery (BatteryChargeState state)
+{
+    if (s_battery_level != state.charge_percent) {
+        s_battery_level = state.charge_percent;
+        layer_mark_dirty (s_battery_layer);
+    }
+}
+
+
+static void
+draw_battery_line (Layer *layer, GContext *ctx)
+{
+    GRect bounds = layer_get_bounds (layer);
+    unsigned width = bounds.size.w * s_battery_level / 100;
+
+    graphics_context_set_fill_color (ctx, GColorBlack);
+    graphics_fill_rect (ctx, bounds, 0, GCornerNone);
+
+    graphics_context_set_fill_color (ctx, COLOR_FALLBACK (GColorLightGray,
+                                                          GColorWhite));
+    graphics_fill_rect (ctx,
+                        GRect ((bounds.size.w - width) / 2, 0, width, bounds.size.h),
+                        1, GCornersAll);
 }
 
 
@@ -98,6 +127,11 @@ main_window_load (Window *window)
     text_layer_set_text_alignment (s_time_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_time_layer));
+
+    /* Battery meter */
+    s_battery_layer = layer_create (GRect (22, 25, 100, 4));
+    layer_set_update_proc (s_battery_layer, draw_battery_line);
+    layer_add_child (window_get_root_layer (s_main_window), s_battery_layer);
 }
 
 static void
@@ -105,6 +139,7 @@ main_window_unload (Window *window)
 {
     text_layer_destroy (s_beats_layer);
     text_layer_destroy (s_time_layer);
+    layer_destroy (s_battery_layer);
 }
 
 
@@ -153,6 +188,7 @@ int main (int argc, char *argv[])
     window_stack_push (s_main_window, true);
 
     bluetooth_connection_service_subscribe (update_bluetooth);
+    battery_state_service_subscribe (update_battery);
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);
@@ -165,6 +201,7 @@ int main (int argc, char *argv[])
     app_event_loop ();
 
     tick_timer_service_unsubscribe ();
+    battery_state_service_unsubscribe ();
     bluetooth_connection_service_unsubscribe ();
     window_destroy (s_main_window);
     return 0;

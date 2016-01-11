@@ -83,7 +83,7 @@ draw_battery_line (Layer *layer, GContext *ctx)
                                                             : GColorLightGray),
                                                           GColorWhite));
     graphics_fill_rect (ctx,
-                        GRect ((bounds.size.w - width) / 2, 0, width, bounds.size.h),
+                        GRect ((bounds.size.w - width) >> 1, 0, width, bounds.size.h),
                         1, GCornersAll);
 }
 
@@ -107,8 +107,10 @@ main_window_load (Window *window)
 {
     window_set_background_color (s_main_window, GColorBlack);
 
+    GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
+
     /* Beats */
-    s_beats_layer = text_layer_create (GRect (0, 32, 144, 78));
+    s_beats_layer = text_layer_create (GRect (0, 32, bounds.size.w, 78));
     text_layer_set_background_color (s_beats_layer, GColorClear);
     text_layer_set_text_color (s_beats_layer, GColorWhite);
     text_layer_set_text (s_beats_layer, s_beats_buffer);
@@ -118,7 +120,7 @@ main_window_load (Window *window)
                      text_layer_get_layer (s_beats_layer));
 
     /* Normal HH:MM display */
-    s_time_layer = text_layer_create (GRect (0, 120, 144, 24));
+    s_time_layer = text_layer_create (GRect (0, 120, bounds.size.w, 24));
     text_layer_set_background_color (s_time_layer, GColorClear);
     text_layer_set_text_color (s_time_layer,
                                COLOR_FALLBACK (GColorLightGray,
@@ -131,7 +133,9 @@ main_window_load (Window *window)
                      text_layer_get_layer (s_time_layer));
 
     /* Battery meter */
-    s_battery_layer = layer_create (GRect (22, 25, 100, 4));
+    const unsigned meter_width = (bounds.size.w * 80 / 100) & ~1;
+    const unsigned meter_pos_x = (bounds.size.w - meter_width) >> 1;
+    s_battery_layer = layer_create (GRect (meter_pos_x, 25, meter_width, 4));
     layer_set_update_proc (s_battery_layer, draw_battery_line);
     layer_add_child (window_get_root_layer (s_main_window), s_battery_layer);
 }

@@ -188,7 +188,10 @@ int main (int argc, char *argv[])
     window_stack_push (s_main_window, true);
 
     bluetooth_connection_service_subscribe (update_bluetooth);
+
     battery_state_service_subscribe (update_battery);
+    update_battery (battery_state_service_peek ());
+
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);

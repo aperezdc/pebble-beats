@@ -5,12 +5,18 @@
 enum PersistKey {
     PERSIST_KEY_FONT  = 0,
 };
+
 enum FontId {
     FONT_ACE_FUTURISM   = 0,
     FONT_FALSE_POSITIVE = 1,
     FONT_AKRON_SANS     = 2,
 };
 
+static const int8_t font_y_shift[] = {
+    [FONT_ACE_FUTURISM]   = -8,
+    [FONT_FALSE_POSITIVE] = -6,
+    [FONT_AKRON_SANS]     = -14,
+};
 
 static Window    *s_main_window    = NULL;
 static TextLayer *s_beats_layer    = NULL;
@@ -89,15 +95,18 @@ draw_battery_line (Layer *layer, GContext *ctx)
 
 
 static GFont
-config_get_font (void)
+config_get_font (enum FontId *font_id)
 {
     switch (persist_read_int (PERSIST_KEY_FONT)) {
         case FONT_FALSE_POSITIVE:
+            if (font_id) *font_id = FONT_FALSE_POSITIVE;
             return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_FALSE_POSITIVE_70));
         case FONT_AKRON_SANS:
+            if (font_id) *font_id = FONT_AKRON_SANS;
             return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_AKRON_SANS_76));
         case FONT_ACE_FUTURISM:
         default:
+            if (font_id) *font_id = FONT_ACE_FUTURISM;
             return fonts_load_custom_font (resource_get_handle (RESOURCE_ID_FONT_BEATS_60));
     }
 }
@@ -110,17 +119,24 @@ main_window_load (Window *window)
     GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
 
     /* Beats */
-    s_beats_layer = text_layer_create (GRect (0, 32, bounds.size.w, 78));
+#define BEATS_DISPLAY_HEIGHT 78
+    enum FontId font_id;
+    GFont font = config_get_font (&font_id);
+    const unsigned beats_pos_y = ((bounds.size.h - BEATS_DISPLAY_HEIGHT) >> 1)
+                               + font_y_shift[font_id];
+    s_beats_layer = text_layer_create (GRect (0, beats_pos_y, bounds.size.w, BEATS_DISPLAY_HEIGHT));
     text_layer_set_background_color (s_beats_layer, GColorClear);
     text_layer_set_text_color (s_beats_layer, GColorWhite);
     text_layer_set_text (s_beats_layer, s_beats_buffer);
-    text_layer_set_font (s_beats_layer, config_get_font ());
+    text_layer_set_font (s_beats_layer, font);
     text_layer_set_text_alignment (s_beats_layer, GTextAlignmentCenter);
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));
 
     /* Normal HH:MM display */
-    s_time_layer = text_layer_create (GRect (0, 120, bounds.size.w, 24));
+#define HHMM_DISPLAY_HEIGHT 24
+    const unsigned hhmm_pos_y = (bounds.size.h * 80 / 100) - (HHMM_DISPLAY_HEIGHT >> 1);
+    s_time_layer = text_layer_create (GRect (0, hhmm_pos_y, bounds.size.w, HHMM_DISPLAY_HEIGHT));
     text_layer_set_background_color (s_time_layer, GColorClear);
     text_layer_set_text_color (s_time_layer,
                                COLOR_FALLBACK (GColorLightGray,
@@ -133,7 +149,7 @@ main_window_load (Window *window)
                      text_layer_get_layer (s_time_layer));
 
     /* Battery meter */
-    const unsigned meter_width = (bounds.size.w * 80 / 100) & ~1;
+    const unsigned meter_width = (bounds.size.w * 80 / 100);
     const unsigned meter_pos_x = (bounds.size.w - meter_width) >> 1;
     s_battery_layer = layer_create (GRect (meter_pos_x, 25, meter_width, 4));
     layer_set_update_proc (s_battery_layer, draw_battery_line);
@@ -161,7 +177,18 @@ config_init (void)
 static void
 config_apply (void)
 {
-    text_layer_set_font (s_beats_layer, config_get_font ());
+    enum FontId font_id;
+    GFont font = config_get_font (&font_id);
+
+    /* Recalculate beats text layer bounds */
+    GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
+    bounds.origin.y = ((bounds.size.h - BEATS_DISPLAY_HEIGHT) >> 1)
+                    + font_y_shift[font_id];
+    bounds.size.h = BEATS_DISPLAY_HEIGHT;
+    layer_set_frame (text_layer_get_layer (s_beats_layer), bounds);
+
+    /* ...and set the font */
+    text_layer_set_font (s_beats_layer, font);
 }
 
 

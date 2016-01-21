@@ -15,7 +15,7 @@ Pebble.addEventListener("webviewclosed",
 		var json = JSON.parse(decodeURIComponent(e.response));
 		console.log("Configuration window returned: " + JSON.stringify(json));
 		var toggles = 0;
-		for (var key of TOGGLE_FLAGS) {
+		for (var key in TOGGLE_FLAGS) {
 			if (typeof json[key] == undefined || !!json[key]) {
 				toggles = toggles | TOGGLE_FLAGS[key];
 			}

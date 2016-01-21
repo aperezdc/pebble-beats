@@ -4,7 +4,8 @@
     "companyName": "Adri\u00e1n P\u00e9rez",
     "capabilities": ["configurable"],
     "appKeys": {
-    	"PERSIST_KEY_FONT": 0
+    	"PERSIST_KEY_FONT": 0,
+    	"PERSIST_KEY_TOGGLES": 1
     },
     "projectType": "native",
     "resources": {

@@ -21,6 +21,18 @@
 		<h1 class="title">@beats Configuration</h1>
 
 		<div class="item-container">
+			<div class="item-container-header">Toggles</div>
+			<div class="item-container-content">
+				<label class="item">Battery bar
+					<input type="checkbox" class="item-toggle" name="batterybar" id="options-batterybar" checked>
+				</label>
+				<label class="item">HH:MM display
+					<input type="checkbox" class="item-toggle" name="hhmmdisplay" id="options-hhmmdisplay" checked>
+				</label>
+			</div>
+		</div>
+
+		<div class="item-container">
 			<div class="item-container-header">Styling</div>
 			<div class="item-container-content">
 				<label class="item">Font
@@ -42,8 +54,16 @@
 	<script type="text/javascript">
 	function getConfigData() {
 		var font = document.getElementById("options-font").value;
+		var batterybar = !!document.getElementById("options-batterybar").checked;
+		var hhmmdisplay = !!document.getElementById("options-hhmmdisplay").checked;
 		localStorage["font"] = font;
-		return { "font": font };
+		localStorage["batterybar"] = batterybar;
+		localStorage["hhmmdisplay"] = hhmmdisplay;
+		return {
+			"font": font,
+			"batterybar": batterybar,
+			"hhmmdisplay": hhmmdisplay,
+		};
 	}
 
 	function getQueryParam(variable, defaultValue) {

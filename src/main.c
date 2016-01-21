@@ -3,13 +3,23 @@
 #define LENGTH_OF(v)  ((sizeof (v) / sizeof(v[0])))
 
 enum PersistKey {
-    PERSIST_KEY_FONT  = 0,
+    PERSIST_KEY_FONT    = 0,
+    PERSIST_KEY_TOGGLES = 1,
 };
 
 enum FontId {
     FONT_ACE_FUTURISM   = 0,
     FONT_FALSE_POSITIVE = 1,
     FONT_AKRON_SANS     = 2,
+};
+
+enum ToggleFlag {
+    TOGGLE_FLAG_BATTERY_BAR  = (1 << 0),
+    TOGGLE_FLAG_HHMM_DISPLAY = (1 << 1),
+
+    TOGGLE_FLAG_ALL = TOGGLE_FLAG_BATTERY_BAR
+                    | TOGGLE_FLAG_HHMM_DISPLAY
+                    ,
 };
 
 static const int8_t font_y_shift[] = {
@@ -31,12 +41,14 @@ static void
 update_time (struct tm *localtm,
              TimeUnits  units_changed)
 {
+    /* The normal HH:MM NN text is straightforward. */
+    if (s_time_layer) {
+        clock_copy_time_string (s_time_buffer, LENGTH_OF (s_time_buffer));
+        layer_mark_dirty (text_layer_get_layer (s_time_layer));
+    }
+
     /* We'll do all calculations starting from the UTC time. */
     time_t utctime = mktime (localtm);
-
-    /* The normal HH:MM NN text is straightforward. */
-    clock_copy_time_string (s_time_buffer, LENGTH_OF (s_time_buffer));
-    layer_mark_dirty (text_layer_get_layer (s_time_layer));
 
     /*
      * Convert the "struct tm" back to a time_t (seconds from the Epoch), so
@@ -111,12 +123,52 @@ config_get_font (enum FontId *font_id)
     }
 }
 
+
+/*
+ * Normal HH:MM display
+ */
+
+#define HHMM_DISPLAY_HEIGHT 24
+
+static void
+create_hhmmdisplay (Window *parent, const GRect *bounds)
+{
+    /* Do nothing if layer is already created. */
+    if (s_time_layer) return;
+
+    const unsigned hhmm_pos_y = (bounds->size.h * 80 / 100) - (HHMM_DISPLAY_HEIGHT >> 1);
+    s_time_layer = text_layer_create (GRect (0, hhmm_pos_y, bounds->size.w, HHMM_DISPLAY_HEIGHT));
+    text_layer_set_background_color (s_time_layer, GColorClear);
+    text_layer_set_text_color (s_time_layer,
+                               COLOR_FALLBACK (GColorLightGray,
+                                               GColorWhite));
+    text_layer_set_text (s_time_layer, s_time_buffer);
+    text_layer_set_font (s_time_layer,
+                         fonts_get_system_font (FONT_KEY_GOTHIC_24_BOLD));
+    text_layer_set_text_alignment (s_time_layer, GTextAlignmentCenter);
+    layer_add_child (window_get_root_layer (parent),
+                     text_layer_get_layer (s_time_layer));
+}
+
+static void
+destroy_hhmmdisplay (void)
+{
+    /* Do nothing if layer has not been created */
+    if (!s_time_layer) return;
+
+    layer_remove_from_parent (text_layer_get_layer (s_time_layer));
+    text_layer_destroy (s_time_layer);
+    s_time_layer = NULL;
+}
+
+
 static void
 main_window_load (Window *window)
 {
-    window_set_background_color (s_main_window, GColorBlack);
+    const GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
+    const enum ToggleFlag toggles = persist_read_int (PERSIST_KEY_TOGGLES);
 
-    GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
+    window_set_background_color (s_main_window, GColorBlack);
 
     /* Beats */
 #define BEATS_DISPLAY_HEIGHT 78
@@ -133,20 +185,8 @@ main_window_load (Window *window)
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));
 
-    /* Normal HH:MM display */
-#define HHMM_DISPLAY_HEIGHT 24
-    const unsigned hhmm_pos_y = (bounds.size.h * 80 / 100) - (HHMM_DISPLAY_HEIGHT >> 1);
-    s_time_layer = text_layer_create (GRect (0, hhmm_pos_y, bounds.size.w, HHMM_DISPLAY_HEIGHT));
-    text_layer_set_background_color (s_time_layer, GColorClear);
-    text_layer_set_text_color (s_time_layer,
-                               COLOR_FALLBACK (GColorLightGray,
-                                               GColorWhite));
-    text_layer_set_text (s_time_layer, s_time_buffer);
-    text_layer_set_font (s_time_layer,
-                         fonts_get_system_font (FONT_KEY_GOTHIC_24_BOLD));
-    text_layer_set_text_alignment (s_time_layer, GTextAlignmentCenter);
-    layer_add_child (window_get_root_layer (s_main_window),
-                     text_layer_get_layer (s_time_layer));
+    if (toggles & TOGGLE_FLAG_HHMM_DISPLAY)
+        create_hhmmdisplay (window, &bounds);
 
     /* Battery meter */
     const unsigned meter_width = (bounds.size.w * 80 / 100);
@@ -160,7 +200,7 @@ static void
 main_window_unload (Window *window)
 {
     text_layer_destroy (s_beats_layer);
-    text_layer_destroy (s_time_layer);
+    destroy_hhmmdisplay ();
     layer_destroy (s_battery_layer);
 }
 
@@ -170,6 +210,9 @@ config_init (void)
 {
     if (!persist_exists (PERSIST_KEY_FONT)) {
         persist_write_int (PERSIST_KEY_FONT, FONT_ACE_FUTURISM);
+    }
+    if (!persist_exists (PERSIST_KEY_TOGGLES)) {
+        persist_write_int (PERSIST_KEY_TOGGLES, TOGGLE_FLAG_ALL);
     }
 }
 
@@ -181,14 +224,23 @@ config_apply (void)
     GFont font = config_get_font (&font_id);
 
     /* Recalculate beats text layer bounds */
-    GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
-    bounds.origin.y = ((bounds.size.h - BEATS_DISPLAY_HEIGHT) >> 1)
-                    + font_y_shift[font_id];
-    bounds.size.h = BEATS_DISPLAY_HEIGHT;
-    layer_set_frame (text_layer_get_layer (s_beats_layer), bounds);
+    const GRect bounds = layer_get_bounds (window_get_root_layer (s_main_window));
+    layer_set_frame (text_layer_get_layer (s_beats_layer),
+                     GRect (bounds.origin.x,
+                            BEATS_DISPLAY_HEIGHT,
+                            bounds.size.w,
+                            ((bounds.size.h - BEATS_DISPLAY_HEIGHT) >> 1) + font_y_shift[font_id]));
 
     /* ...and set the font */
     text_layer_set_font (s_beats_layer, font);
+
+    /* Handle complications */
+    const enum ToggleFlag toggles = persist_read_int (PERSIST_KEY_TOGGLES);
+    if (toggles & TOGGLE_FLAG_HHMM_DISPLAY) {
+        create_hhmmdisplay (s_main_window, &bounds);
+    } else {
+        destroy_hhmmdisplay ();
+    }
 }
 
 
@@ -196,14 +248,19 @@ static void
 message_received (DictionaryIterator *iter, void *context)
 {
     for (Tuple *t = dict_read_first (iter); t; t = dict_read_next (iter)) {
-        if (t->key == PERSIST_KEY_FONT) {
-            if (!strcmp (t->value->cstring, "ace-futurism")) {
-                persist_write_int (t->key, FONT_ACE_FUTURISM);
-            } else if (!strcmp (t->value->cstring, "false-positive")) {
-                persist_write_int (t->key, FONT_FALSE_POSITIVE);
-            } else if (!strcmp (t->value->cstring, "akron-sans")) {
-                persist_write_int (t->key, FONT_AKRON_SANS);
-            }
+        switch (t->key) {
+            case PERSIST_KEY_FONT:
+                if (!strcmp (t->value->cstring, "ace-futurism")) {
+                    persist_write_int (t->key, FONT_ACE_FUTURISM);
+                } else if (!strcmp (t->value->cstring, "false-positive")) {
+                    persist_write_int (t->key, FONT_FALSE_POSITIVE);
+                } else if (!strcmp (t->value->cstring, "akron-sans")) {
+                    persist_write_int (t->key, FONT_AKRON_SANS);
+                }
+                break;
+            case PERSIST_KEY_TOGGLES:
+                persist_write_int (t->key, t->value->int32 & TOGGLE_FLAG_ALL);
+                break;
         }
     }
 

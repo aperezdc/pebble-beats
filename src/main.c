@@ -162,6 +162,41 @@ destroy_hhmmdisplay (void)
 }
 
 
+/*
+ * Battery bar
+ */
+
+static void
+create_battery_bar (Window *parent, const GRect *bounds)
+{
+    /* Do nothing if layer is already created. */
+    if (s_battery_layer) return;
+
+    const unsigned meter_width = (bounds->size.w * 80 / 100);
+    const unsigned meter_pos_x = (bounds->size.w - meter_width) >> 1;
+    s_battery_layer = layer_create (GRect (meter_pos_x, 25, meter_width, 4));
+    layer_set_update_proc (s_battery_layer, draw_battery_line);
+    layer_add_child (window_get_root_layer (parent), s_battery_layer);
+
+    battery_state_service_subscribe (update_battery);
+    update_battery (battery_state_service_peek ());
+
+}
+
+static void
+destroy_battery_bar (void)
+{
+    /* Do nothing if layer has not been created */
+    if (!s_battery_layer) return;
+
+    battery_state_service_unsubscribe ();
+
+    layer_remove_from_parent (s_battery_layer);
+    layer_destroy (s_battery_layer);
+    s_battery_layer = NULL;
+}
+
+
 static void
 main_window_load (Window *window)
 {
@@ -185,15 +220,8 @@ main_window_load (Window *window)
     layer_add_child (window_get_root_layer (s_main_window),
                      text_layer_get_layer (s_beats_layer));
 
-    if (toggles & TOGGLE_FLAG_HHMM_DISPLAY)
-        create_hhmmdisplay (window, &bounds);
-
-    /* Battery meter */
-    const unsigned meter_width = (bounds.size.w * 80 / 100);
-    const unsigned meter_pos_x = (bounds.size.w - meter_width) >> 1;
-    s_battery_layer = layer_create (GRect (meter_pos_x, 25, meter_width, 4));
-    layer_set_update_proc (s_battery_layer, draw_battery_line);
-    layer_add_child (window_get_root_layer (s_main_window), s_battery_layer);
+    if (toggles & TOGGLE_FLAG_HHMM_DISPLAY) create_hhmmdisplay (window, &bounds);
+    if (toggles & TOGGLE_FLAG_BATTERY_BAR)  create_battery_bar (window, &bounds);
 }
 
 static void
@@ -201,7 +229,7 @@ main_window_unload (Window *window)
 {
     text_layer_destroy (s_beats_layer);
     destroy_hhmmdisplay ();
-    layer_destroy (s_battery_layer);
+    destroy_battery_bar ();
 }
 
 
@@ -236,11 +264,18 @@ config_apply (void)
 
     /* Handle complications */
     const enum ToggleFlag toggles = persist_read_int (PERSIST_KEY_TOGGLES);
-    if (toggles & TOGGLE_FLAG_HHMM_DISPLAY) {
-        create_hhmmdisplay (s_main_window, &bounds);
-    } else {
-        destroy_hhmmdisplay ();
-    }
+
+#define COMPLICATION(flag, create, destroy)   \
+    do {                                      \
+        if (toggles & TOGGLE_FLAG_ ## flag) { \
+            create (s_main_window, &bounds);  \
+        } else { destroy (); }                \
+    } while (false)
+
+    COMPLICATION (HHMM_DISPLAY, create_hhmmdisplay, destroy_hhmmdisplay);
+    COMPLICATION (BATTERY_BAR,  create_battery_bar, destroy_battery_bar);
+
+#undef COMPLICATION
 }
 
 
@@ -279,9 +314,6 @@ int main (int argc, char *argv[])
 
     bluetooth_connection_service_subscribe (update_bluetooth);
 
-    battery_state_service_subscribe (update_battery);
-    update_battery (battery_state_service_peek ());
-
     tick_timer_service_subscribe (MINUTE_UNIT, update_time);
     time_t curtime = time (NULL);
     update_time (localtime (&curtime), 0);
@@ -294,7 +326,6 @@ int main (int argc, char *argv[])
     app_event_loop ();
 
     tick_timer_service_unsubscribe ();
-    battery_state_service_unsubscribe ();
     bluetooth_connection_service_unsubscribe ();
     window_destroy (s_main_window);
     return 0;
